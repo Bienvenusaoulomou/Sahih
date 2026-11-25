@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sahih — Ce message vient-il vraiment d'eux ?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&family=Noto+Kufi+Arabic:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="/img/favicon.png"><link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body class="theme-public">
+<section class="hero">
+  <div class="ghost" aria-hidden="true">SAHIH</div>
+  <canvas id="sphere" aria-hidden="true"></canvas>
+  <h1>Ce message vient-il <em>vraiment</em> d'eux&nbsp;?</h1>
+  <div class="bottom">
+    <div>
+      <p>Faux communiqués, faux SMS d'amende, fausses alertes bancaires. Sahih compare chaque message aux messages officiels signés sur Hedera par les institutions.</p>
+      <a class="btn" href="#verifier">Vérifier un message</a>
+    </div>
+    <div class="stats" aria-label="Chiffres en direct">
+      <div><b id="sInst">–</b><span>institutions<br>accréditées</span></div>
+      <div><b id="sPub">–</b><span>messages officiels<br>signés</span></div>
+      <div><b id="sVer">–</b><span>vérifications<br>citoyennes</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="verifier">
+  <div class="sec-head">
+    <h2>Collez le message. <em>Hedera tranche.</em></h2>
+    <p>Sans inscription. Le verdict vient du registre Hedera ; l'IA l'explique ensuite en langage simple.</p>
+  </div>
+  <div class="tool">
+    <label for="text" style="margin-top:0">Message, SMS, communiqué ou lien suspect</label>
+    <textarea id="text" placeholder="Collez ici le message reçu…"></textarea>
+    <div class="foot">
+      <div style="flex:1;min-width:220px"><label for="sender">Expéditeur affiché (facultatif)</label><input id="sender" placeholder="Numéro ou nom, ex. +33 7 56 12 45 89"></div>
+      <button class="btn" id="go" style="height:48px;min-width:170px">Vérifier</button>
+    </div>
+    <div class="chips" id="examples">
+      <span class="small muted">Essayer un exemple :</span>
+      <button class="chip" data-ex="0">Vrai communiqué</button>
+      <button class="chip" data-ex="1">Communiqué modifié</button>
+      <button class="chip" data-ex="2">Faux SMS bancaire</button>
+      <button class="chip" data-ex="3">Faux SMS d'amende</button>
+      <button class="chip" data-ex="4">Fausse page Facebook</button>
+      <button class="chip" data-ex="5">Vrai compte Instagram</button>
+    </div>
+    <div id="err"></div>
+  </div>
+  <div id="out"></div>
+</section>
+
+<section class="section" id="fonctionnement">
+  <div class="sec-head">
+    <h2>Une preuve d'origine pour <em>chaque message officiel</em></h2>
+    <p>Quatre étapes, toutes inscrites sur Hedera : personne ne peut les modifier, même pas l'institution.</p>
+  </div>
+  <div class="steps4" id="steps">
+    <div class="step on"><div class="n"><span>01</span><span>↗</span></div><h3>L'autorité accrédite</h3><p>Chaque institution vérifiée reçoit une identité Hedera, inscrite dans le registre de confiance.</p></div>
+    <div class="step"><div class="n"><span>02</span><span>↗</span></div><h3>L'institution signe</h3><p>Chaque communiqué ou SMS est signé par sa clé et horodaté par consensus dans son canal officiel.</p></div>
+    <div class="step"><div class="n"><span>03</span><span>↗</span></div><h3>Vous vérifiez</h3><p>Sahih retrouve le message, repère les versions modifiées et les liens ou numéros jamais déclarés.</p></div>
+    <div class="step"><div class="n"><span>04</span><span>↗</span></div><h3>L'IA explique</h3><p>Gemini traduit le verdict en conseils simples. Vos signalements alertent l'institution usurpée.</p></div>
+  </div>
+</section>
+
+<section class="section" id="registre">
+  <div class="sec-head">
+    <h2>Le registre <em>public</em></h2>
+    <p>Accréditations, publications et signalements, lus sur Hedera. Cliquez un code pour voir le message officiel.</p>
+  </div>
+  <div class="ledger" id="feed"><p class="muted">Chargement…</p></div>
+</section>
+
+<section class="section" id="tarifs">
+  <div class="sec-head">
+    <h2>Gratuit pour les citoyens. <em>Simple pour les institutions.</em></h2>
+    <p>Deux offres, les mêmes pour toutes les institutions. Les frais du réseau Hedera sont inclus : vous payez en dinars, sans jamais manipuler de cryptomonnaie.</p>
+  </div>
+  <div class="plans" id="plans"></div>
+  <p class="small muted" style="margin-top:16px" id="planNote"></p>
+</section>
+
+<section class="cta" id="telegram">
+  <div class="box">
+    <h2>Un message douteux&nbsp;? <em>Transférez-le.</em></h2>
+    <p>Le bot Telegram Sahih répond dans la conversation, en quelques secondes. Vous avez un code SAH-XXXXXX sur un communiqué ? Vérifiez-le ici.</p>
+    <div class="row" style="justify-content:center;gap:12px">
+      <span id="botLink"></span>
+      <span class="row" style="flex-wrap:nowrap;gap:8px"><label for="code" hidden>Code</label><input id="code" placeholder="SAH-C76CFC" style="width:170px;text-transform:uppercase;border-radius:999px"><button class="btn light" id="goCode">Vérifier le code</button></span>
+    </div>
+  </div>
+</section>
+
+<footer class="foot-site">
+  <div><div class="clock" id="clock">--:--:--</div><div>Heure de Tunis · registre Hedera <span id="net">testnet</span></div></div>
+  <div style="max-width:420px">Sahih · Hedera Cross Campus Challenge 2026, édition ESPRIT.<br>Les institutions marquées « démo » sont fictives. <a href="/login.html">Espace institution</a></div>
+</footer>
+
+<script src="/common.js"></script>
+<script src="/particles.js"></script>
+<script>
+const EX = [
+  { text: "Communiqué : le Ministère du Commerce informe qu'aucune hausse des prix du sucre, du lait et de l'huile subventionnés n'a été décidée. Le prix du sucre reste fixé à 1,350 dinar le kilo. Toute information contraire est infondée.", sender: "" },
+  { text: "Communiqué : le Ministère du Commerce informe qu'une hausse des prix du sucre, du lait et de l'huile subventionnés a été décidée. Le prix du sucre passe à 1,750 dinar le kilo dès demain. Toute information contraire est infondée.", sender: "" },
+  { text: "Banque Démo : votre compte sera suspendu sous 24h. Confirmez immédiatement votre code de confirmation sur https://banquedemo-securite.xyz/login", sender: "+33 7 56 12 45 89" },
+  { text: "Avis de contravention impayée : réglez 45 DT avant minuit sinon majoration de 300%. Paiement sécurisé : bit.ly/amende-tn", sender: "+44 7700 900123" },
+  { text: "Félicitations ! Banque Démo offre 500 DT à ses clients fidèles. Suivez notre page et envoyez votre code de confirmation en message privé : https://www.facebook.com/banquedemo.cadeaux", sender: "" },
+  { text: "https://www.instagram.com/banquedemo/", sender: "" },
+];
+const STAMP = {
+  AUTHENTIC: ["صحيح", "Authentique"], OFFICIAL_CHANNEL: ["رسمي", "Officiel"], MODIFIED: ["معدَّل", "Modifié"], FAKE: ["مزوّر", "Faux"],
+  NOT_OFFICIAL: ["غير رسمي", "Non officiel"], SUSPICIOUS: ["مشبوه", "Suspect"], UNKNOWN: ["غير مؤكد", "Non vérifié"],
+};
+const SUB = {
+  AUTHENTIC: "Ce message a été publié et signé par l'institution sur Hedera.",
+  OFFICIAL_CHANNEL: "Ce lien ou ce compte est déclaré sur Hedera comme canal officiel de l'institution.",
+  MODIFIED: "Ce texte reprend un vrai message officiel, mais des mots ont été changés. Les passages surlignés ne viennent pas de l'institution.",
+  FAKE: "Ce message se présente comme officiel, mais il utilise un lien, un numéro ou un expéditeur que l'institution n'a jamais déclaré.",
+  NOT_OFFICIAL: "L'institution citée n'a jamais publié ce message.",
+  SUSPICIOUS: "Aucune institution vérifiée ne l'a publié, et il présente des signes d'arnaque.",
+  UNKNOWN: "Aucune institution vérifiée n'a publié ce message.",
+};
+let LAST = null;
+const now = () => new Date().toLocaleDateString("fr-FR");
+// same tokenisation as the server, so changed words can be highlighted
+const mark = (text, set, tag) => String(text).normalize("NFKC").split(/([^\p{L}\p{N}%.,]+)/u)
+  .map((t) => set && set.has(t.toLowerCase().replace(/[.,]+$/, "")) ? `<${tag}>${esc(t)}</${tag}>` : esc(t)).join("");
+const stamp = (v, extra = "", label) => `<div class="stamp hit ${v} ${extra}" role="img" aria-label="Tampon : ${esc(label || STAMP[v][1])}">
+  <span class="ar" lang="ar">${STAMP[v][0]}</span><span class="fr">${esc(label || STAMP[v][1])}</span><span class="when">Hedera · ${now()}</span></div>`;
+
+function aiHtml(r) {
+  const p = r.ai.pending;
+  return `<div class="src">${p ? "L'IA rédige l'explication…" : "Explication" + (String(r.ai.source).startsWith("gemini") ? " par l'IA (Gemini)" : "")}</div>
+    <p style="${p ? "opacity:.5" : ""}">${esc(r.ai.explanation)}</p>
+    <ul style="${p ? "opacity:.5" : ""}">${(r.ai.advice || []).map((a) => `<li>${esc(a)}</li>`).join("")}</ul>
+    <p class="small muted" style="margin:10px 0 0">Le verdict vient de Hedera, l'IA ne fait que l'expliquer. Empreinte de cette explication : <span class="mono">${esc(r.aiDigest)}</span></p>`;
+}
+async function loadAI(r) {
+  if (!r.ai.pending || !r.id) return;
+  try {
+    const x = await api("/api/explain/" + r.id);
+    if (x.ai && LAST === r) { r.ai = x.ai; r.aiDigest = x.aiDigest; $("#aiBox").innerHTML = aiHtml(r); }
+  } catch {}
+  if (r.ai.pending && LAST === r) { r.ai.pending = false; $("#aiBox").innerHTML = aiHtml(r); }
+}
+
+function render(r) {
+  LAST = r;
+  const pub = r.publication, d = r.diff, inst = r.institution;
+  const sender = $("#sender").value.trim();
+  const meta = r.verdict === "OFFICIAL_CHANNEL" ? `Canal officiel de <b>${esc(inst.name)}</b>, déclaré sur Hedera` : r.verdict === "AUTHENTIC"
+    ? `Publié par <b>${esc(inst.name)}</b> le ${fmtDate(pub.consensusAt || pub.at)} · <span class="code">${esc(pub.code)}</span>`
+    : `Message reçu${sender ? ` de <b>${esc(sender)}</b>` : ""}${inst ? ` · se présente comme venant de <b>${esc(inst.name)}</b>` : ""}`;
+  $("#out").innerHTML = `<div class="result">
+    <div class="docwrap"><div class="doc"><div class="meta">${meta}</div>
+      <div class="body diff">${mark(r.text, d ? new Set(d.added) : null, "ins")}</div></div>${stamp(r.verdict)}</div>
+    ${d ? `<div class="docwrap"><div class="doc original"><div class="meta">Version officielle publiée par <b>${esc(inst.name)}</b> le ${fmtDate(pub.at)} · <span class="code">${esc(pub.code)}</span></div>
+      <div class="body diff">${mark(pub.text, new Set(d.removed), "del")}</div></div>${stamp("AUTHENTIC", "small", "Original")}</div>` : ""}
+    <p class="verdict-line ${r.verdict}">${esc(r.verdictLabel)}<span>${esc(SUB[r.verdict])}</span></p>
+    <div class="grid g2" style="margin-top:18px">
+      <div class="card"><h3>Ce que dit Hedera</h3>
+        ${r.checks.map((c) => `<div class="check"><div class="s ${c.ok ? "y" : "n"}" aria-hidden="true">${c.ok ? "✓" : "✕"}</div><div><b>${esc(c.label)}</b><span>${esc(c.detail)}</span></div></div>`).join("")}
+        <div class="row small" style="margin-top:12px;gap:18px">
+          ${r.links.topic ? `<a target="_blank" rel="noopener" href="${r.links.topic}">Voir le canal officiel sur HashScan</a>` : ""}
+          ${r.links.account ? `<a target="_blank" rel="noopener" href="${r.links.account}">Compte de l'institution</a>` : ""}
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div class="ai" id="aiBox">${aiHtml(r)}</div>
+        ${r.flags.length ? `<div class="card"><h3>Signes d'arnaque repérés</h3>${r.flags.map((f) => `<div class="flag">${esc(f.label)}</div>`).join("")}</div>` : ""}
+        ${!["AUTHENTIC", "OFFICIAL_CHANNEL"].includes(r.verdict) ? `<div class="card"><h3>Prévenir l'institution</h3><p class="small">Votre signalement est anonyme. Il est horodaté sur Hedera et apparaît dans l'espace de l'institution concernée.</p>
+          <button class="btn alert" id="report" style="margin-top:12px">Signaler ce message</button><div id="repOut" class="small" style="margin-top:8px"></div></div>` : ""}
+      </div>
+    </div></div>`;
+  const b = $("#report");
+  if (b) b.onclick = async () => {
+    b.disabled = true; b.textContent = "Envoi sur Hedera…";
+    try {
+      const rep = await api("/api/report", { method: "POST", body: { text: r.text, verdict: r.verdict, claimedId: inst && inst.id, hosts: r.hosts, aiDigest: r.aiDigest } });
+      $("#repOut").innerHTML = `<div class="alert ok" style="margin:0">Signalé. Enregistré sur Hedera (signalement n° ${rep.sequence}).</div>`;
+      b.remove(); loadFeed();
+    } catch (e) { $("#repOut").innerHTML = `<div class="alert err" style="margin:0">Le signalement n'a pas pu être envoyé : ${esc(e.message)}</div>`; b.disabled = false; b.textContent = "Signaler ce message"; }
+  };
+  $("#out").scrollIntoView({ behavior: "smooth", block: "start" });
+  loadAI(r); loadStats();
+}
+
+async function verify() {
+  const text = $("#text").value.trim();
+  if (!text) { $("#err").innerHTML = `<div class="alert err">Collez d'abord le message à vérifier.</div>`; $("#text").focus(); return; }
+  $("#err").innerHTML = ""; $("#go").disabled = true; $("#go").textContent = "Vérification…";
+  try { render(await api("/api/verify", { method: "POST", body: { text, sender: $("#sender").value } })); }
+  catch (e) { $("#err").innerHTML = `<div class="alert err">La vérification a échoué : ${esc(e.message)}</div>`; }
+  finally { $("#go").disabled = false; $("#go").textContent = "Vérifier"; }
+}
+async function verifyCode(code) {
+  code = String(code || "").trim();
+  if (!code) return;
+  const r = await api("/api/code/" + encodeURIComponent(code));
+  LAST = null;
+  if (r.verdict === "NOT_FOUND") {
+    $("#out").innerHTML = `<div class="result"><p class="verdict-line FAKE">Code inconnu<span>Aucun message officiel ne porte le code ${esc(code.toUpperCase())}. Un faux message peut inventer un code : ne lui faites pas confiance.</span></p></div>`;
+  } else {
+    const p = r.publication;
+    $("#out").innerHTML = `<div class="result"><div class="docwrap"><div class="doc">
+      <div class="meta">${esc(p.title || p.kind)} · publié par <b>${esc(r.institution.name)}</b> le ${fmtDate(p.consensusAt || p.at)} · <span class="code">${esc(p.code)}</span></div>
+      <div class="body">${p.text ? esc(p.text) : "<i>Message individuel : seule son empreinte est publiée sur Hedera.</i>"}</div></div>${stamp(r.verdict === "AUTHENTIC" ? "AUTHENTIC" : "FAKE")}</div>
+      <p class="verdict-line ${r.verdict === "AUTHENTIC" ? "AUTHENTIC" : "FAKE"}">${r.verdict === "AUTHENTIC" ? "Message officiel authentique" : "Code invalide"}<span>Message n° ${p.sequence} du canal ${esc(p.topicId)} · <a target="_blank" rel="noopener" href="${r.links.topic}">voir la preuve sur HashScan</a></span></p></div>`;
+  }
+  $("#out").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+async function loadStats() { try { const s = await api("/api/state"); $("#sVer").textContent = s.stats.verifications || 0; } catch {} }
+async function loadPlans() {
+  try {
+    const d = await api("/api/billing/plans");
+    const card = (name, price, unit, sub, feats, on, cta, href) => `<div class="plan ${on ? "on" : ""}"><div class="pn">${name}</div>
+      <div class="pp">${price}<small>${unit}</small></div><p>${sub}</p><ul>${feats.map((f) => `<li>${esc(f)}</li>`).join("")}</ul><a class="btn ${on ? "" : "light"}" href="${href}">${cta}</a></div>`;
+    $("#plans").innerHTML = card("Citoyens", "0", " TND", "Pour toujours.", ["Vérification illimitée sur le web", "Bot Telegram", "Vérification des codes SAH et QR codes", "Signalements anonymes"], false, "Vérifier un message", "#verifier")
+      + d.plans.map((p, i) => card(p.name, p.price, " TND HT / mois", `Dépassement : ${String(p.overage).replace(".", ",")} TND par message`, p.features, i === 0, `Choisir ${p.name}`, "/login.html#inscription")).join("");
+    $("#planNote").textContent = `Essai gratuit de ${d.trial.days} jours (${d.trial.quota} messages) après l'accréditation. Prix HT, TVA ${Math.round(d.tva * 100)} % en sus. Factures mensuelles téléchargeables et traçables sur Hedera.`;
+  } catch {}
+}
+loadPlans();
+const KIND = { ACCREDIT: "Accréditation", REVOKE: "Révocation", PUBLISH: "Publication", REPORT: "Signalement" };
+async function loadFeed() {
+  try {
+    const items = await api("/api/feed");
+    $("#feed").innerHTML = items.length ? items.slice(0, 12).map((i) => `<div class="it">
+      <span class="when">${fmtShort(i.at)}</span><span class="kind ${i.type}">${KIND[i.type]}</span>
+      <div>${esc(i.title)}${i.code ? ` <button class="code" style="cursor:pointer" onclick="verifyCode('${esc(i.code)}')">${esc(i.code)}</button>` : ""}${i.private ? ' <span class="badge mid">empreinte seule</span>' : ""}</div>
+      ${i.topicId && STATE ? `<a class="small" target="_blank" rel="noopener" href="${STATE.hashscan}/topic/${i.topicId}">HashScan ↗</a>` : "<span></span>"}</div>`).join("")
+      : `<p class="muted">Le registre est vide. Lancez <span class="mono">npm run setup</span> pour créer les institutions de démonstration.</p>`;
+  } catch (e) { $("#feed").innerHTML = `<div class="alert err">Le registre n'a pas pu être chargé : ${esc(e.message)}</div>`; }
+}
+
+$("#go").onclick = verify;
+$("#text").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) verify(); });
+$("#goCode").onclick = () => verifyCode($("#code").value);
+$("#code").addEventListener("keydown", (e) => { if (e.key === "Enter") verifyCode($("#code").value); });
+document.querySelectorAll("[data-ex]").forEach((c) => c.onclick = () => { const e = EX[c.dataset.ex]; $("#text").value = e.text; $("#sender").value = e.sender; verify(); });
+nav("home").then((s) => {
+  if (s) { $("#sInst").textContent = s.stats.institutions; $("#sPub").textContent = s.stats.publications; $("#sVer").textContent = s.stats.verifications || 0; $("#net").textContent = s.network; }
+  $("#botLink").innerHTML = s && s.bot && s.bot !== "actif" ? `<a class="btn" target="_blank" rel="noopener" href="https://t.me/${esc(s.bot)}">Ouvrir @${esc(s.bot)}</a>` : `<span class="small muted">Bot Telegram bientôt disponible.</span>`;
+  loadFeed();
+});
+const q = new URLSearchParams(location.search);
+if (q.get("code")) { $("#code").value = q.get("code"); verifyCode(q.get("code")); }
+setInterval(loadFeed, 15000);
+if (window.SahihParticles) SahihParticles.mount($("#sphere"));
+const tick = () => { $("#clock").textContent = new Date().toLocaleTimeString("fr-FR", { timeZone: "Africa/Tunis" }); }; tick(); setInterval(tick, 1000);
+document.querySelectorAll("#steps .step").forEach((s) => s.addEventListener("mouseenter", () => document.querySelectorAll("#steps .step").forEach((x) => x.classList.toggle("on", x === s))));
+const pre = sessionStorage.getItem("sahih_try"); if (pre) { sessionStorage.removeItem("sahih_try"); $("#text").value = pre; setTimeout(verify, 300); }
+</script>
+</body></html>

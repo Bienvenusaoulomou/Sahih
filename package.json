@@ -1,0 +1,22 @@
+{
+  "name": "sahih",
+  "version": "1.0.0",
+  "description": "Sahih - verify that a message really comes from an institution. Signed, timestamped official messages on Hedera (HCS) + AI explanations.",
+  "main": "src/server.js",
+  "scripts": {
+    "setup": "node src/setup.js",
+    "start": "node src/server.js",
+    "demo-accounts": "node src/demo-accounts.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@hashgraph/sdk": "^2.81.0",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "pdfkit": "^0.21.0",
+    "qrcode": "^1.5.4"
+  }
+}

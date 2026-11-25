@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sahih — Vérifier une facture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&family=Noto+Kufi+Arabic:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="/img/favicon.png">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body class="theme-public">
+<section class="section" style="max-width:760px;padding-top:60px">
+  <div class="sec-head"><h2>Vérification d'une <em>facture Sahih</em></h2></div>
+  <div id="out" class="tool"><p class="muted">Lecture du registre…</p></div>
+</section>
+<script src="/common.js"></script>
+<script>
+nav("");
+(async () => {
+  const q = new URLSearchParams(location.search), n = q.get("n"), hh = q.get("h");
+  if (!n) { $("#out").innerHTML = `<p>Aucune facture indiquée. Scannez le QR code imprimé sur la facture.</p>`; return; }
+  const r = await api(`/api/billing/verify/${encodeURIComponent(n)}?h=${encodeURIComponent(hh || "")}`);
+  if (!r.found) { $("#out").innerHTML = `<p class="verdict-line FAKE">Facture inconnue<span>Aucune facture ${esc(n)} n'a été émise par Sahih.</span></p>`; return; }
+  const ok = r.hashMatches === true;
+  $("#out").innerHTML = `<p class="verdict-line ${ok ? "AUTHENTIC" : "FAKE"}" style="margin-top:0">${ok ? "Facture authentique" : "Facture modifiée"}<span>${ok ? "Son contenu correspond exactement à l'empreinte enregistrée sur Hedera." : "L'empreinte de ce document ne correspond pas à celle enregistrée sur Hedera."}</span></p>
+    <div class="check"><div class="s y">✓</div><div><b>Facture ${esc(r.number)}</b><span>${esc(monthName(r.period))} · ${money(r.ttc)} TTC · émise le ${fmtDate(r.issuedAt)}</span></div></div>
+    <div class="check"><div class="s ${r.status === "PAID" ? "y" : "n"}">${r.status === "PAID" ? "✓" : "!"}</div><div><b>${r.status === "PAID" ? "Payée" : "Non payée"}</b><span>${r.paidAt ? "Paiement enregistré le " + fmtDate(r.paidAt) : "Aucun paiement confirmé"}</span></div></div>
+    <div class="check"><div class="s y">✓</div><div><b>Ancrée sur Hedera</b><span>Topic ${esc(r.hcs.topic)} · émission n° ${r.hcs.invoiceSeq}${r.hcs.paymentSeq ? ` · paiement n° ${r.hcs.paymentSeq}` : ""} · <a target="_blank" rel="noopener" href="${r.hashscan}">voir sur HashScan ↗</a></span></div></div>`;
+})();
+</script>
+</body></html>

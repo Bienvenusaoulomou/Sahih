@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sahih — Espace institution</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&family=Noto+Kufi+Arabic:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="/img/favicon.png"><link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body class="theme-dash">
+<template id="content">
+  <section class="panel" id="apercu">
+    <div class="panel-head">
+      <div><h1 id="hello">Bonjour</h1><p id="today"></p></div>
+      <div class="row"><a class="btn light" id="hsLink" target="_blank" rel="noopener">Canal sur HashScan</a><a class="btn" href="#publier">+ Publier un message</a></div>
+    </div>
+    <div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr)">
+      <div class="box"><div class="row" style="justify-content:space-between"><h3>Vérifications de vos messages</h3><span class="badge mid">7 derniers jours</span></div>
+        <p class="hint">Combien de fois des citoyens ont vérifié un message à votre nom.</p><div id="chart"></div></div>
+      <div class="box"><h3>Ce que trouvent les citoyens</h3><p class="hint">Résultat des vérifications à votre nom.</p><div class="donut" id="donut"></div><div class="legend" id="legend"></div></div>
+    </div>
+    <div class="grid g4" style="margin-top:18px" id="tiles"></div>
+  </section>
+
+  <section class="panel" id="publier">
+    <div class="panel-head"><div><h1 style="font-size:24px">Publier un message officiel</h1><p>Signé avec la clé de votre institution et horodaté sur Hedera. Publiez-le avant de le diffuser.</p></div></div>
+    <div class="grid" style="grid-template-columns:minmax(0,3fr) minmax(0,2fr)">
+      <form class="box" id="pubForm">
+        <div class="grid g2" style="gap:0 12px">
+          <div><label for="kind" style="margin-top:0">Type</label><select id="kind" name="kind"><option value="communiqué">Communiqué</option><option value="sms">SMS ou modèle de SMS</option><option value="annonce">Annonce</option><option value="avis">Avis</option></select></div>
+          <div><label for="title" style="margin-top:0">Titre</label><input id="title" name="title" placeholder="Ex. Coupure programmée"></div>
+        </div>
+        <label for="ptext">Texte exact du message</label>
+        <textarea id="ptext" name="text" class="big-input" placeholder="Le texte tel qu'il sera diffusé"></textarea>
+        <label class="row" style="gap:8px;font-weight:500"><input type="checkbox" name="isPrivate" style="width:auto"> Message individuel : ne publier que son empreinte</label>
+        <button class="btn" id="pubBtn" style="margin-top:14px">Signer et publier sur Hedera</button>
+      </form>
+      <div class="box" id="pubOut"><h3>Comment ça marche</h3><p class="hint">1. Écrivez le texte exact et signez-le ici.<br>2. Sahih l'horodate sur Hedera et vous donne un texte prêt à diffuser, avec le code <span class="code">SAH-XXXXXX</span> et un QR code.<br>3. Diffusez-le sur vos canaux (SMS, Facebook, WhatsApp, affiche…). Toute copie modifiée sera détectée.</p></div>
+    </div>
+  </section>
+
+  <section class="panel" id="publications">
+    <div class="panel-head"><div><h1 style="font-size:24px">Messages publiés</h1><p>Chaque ligne est un message signé dans votre canal officiel Hedera.</p></div></div>
+    <div class="box" style="overflow:auto"><table><thead><tr><th>Date</th><th>Message</th><th>Code</th><th>Preuve</th></tr></thead><tbody id="pubs"></tbody></table></div>
+  </section>
+
+  <section class="panel" id="signalements">
+    <div class="panel-head"><div><h1 style="font-size:24px">Signalements d'usurpation</h1><p>Messages que des citoyens ont signalés comme faux à votre nom, horodatés sur Hedera.</p></div></div>
+    <div class="box list" id="alerts"></div>
+  </section>
+
+  <section class="panel" id="abonnement">
+    <div class="panel-head"><div><h1 style="font-size:24px">Abonnement et factures</h1><p>Les frais du réseau Hedera sont inclus. Chaque facture et chaque paiement sont enregistrés sur Hedera.</p></div></div>
+    <div class="grid" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr)">
+      <div class="box" id="planBox"></div>
+      <div class="grid g2" id="planCards"></div>
+    </div>
+    <div class="box" style="margin-top:18px;overflow:auto">
+      <div class="row" style="justify-content:space-between"><h3>Factures</h3><span class="small muted">Téléchargeables à tout moment</span></div>
+      <table><thead><tr><th>N°</th><th>Période</th><th>Montant TTC</th><th>Statut</th><th>Traçabilité</th><th></th></tr></thead><tbody id="invs"></tbody></table>
+    </div>
+    <div id="billOut"></div>
+  </section>
+
+  <section class="panel" id="canaux">
+    <div class="panel-head"><div><h1 style="font-size:24px">Canaux officiels</h1><p>Tout lien, numéro ou expéditeur absent de cette liste est signalé aux citoyens comme non officiel.</p></div></div>
+    <form class="box" id="chForm">
+      <div class="grid g3" style="gap:0 14px">
+        <div><label for="domains" style="margin-top:0">Domaines</label><input id="domains" name="domains"></div>
+        <div><label for="senders" style="margin-top:0">Expéditeurs SMS</label><input id="senders" name="senders"></div>
+        <div><label for="phones" style="margin-top:0">Numéros</label><input id="phones" name="phones"></div>
+      </div>
+      <label for="social">Réseaux sociaux officiels <span class="muted" style="font-weight:400">(un lien par ligne : Facebook, Instagram, TikTok, LinkedIn, X, YouTube, Telegram, WhatsApp)</span></label>
+      <textarea id="social" name="social" rows="4" placeholder="https://facebook.com/votre-page&#10;https://instagram.com/votre-compte&#10;https://wa.me/216XXXXXXXX"></textarea>
+      <div class="row" style="margin-top:14px"><button class="btn" id="chBtn">Mettre à jour sur Hedera</button><span id="chOut" class="small"></span></div>
+    </form>
+  </section>
+
+  <section class="panel" id="securite">
+    <div class="panel-head"><div><h1 style="font-size:24px">Sécurité du compte</h1><p>La clé Hedera de votre institution est chiffrée sur le serveur (AES-256-GCM).</p></div></div>
+    <form class="box" id="pwForm" style="max-width:560px">
+      <label for="cur" style="margin-top:0">Mot de passe actuel</label><input id="cur" type="password" autocomplete="current-password">
+      <label for="next">Nouveau mot de passe</label><input id="next" type="password" autocomplete="new-password">
+      <div class="row" style="margin-top:14px"><button class="btn">Changer le mot de passe</button><span id="pwOut" class="small"></span></div>
+    </form>
+  </section>
+</template>
+<script src="/common.js"></script>
+<script>
+let ID = null, INST = null;
+const DAY = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+const hour = new Date().getHours();
+async function load() {
+  const d = await api("/api/institutions/" + ID);
+  const i = d.institution, ch = i.channels || {}, v = d.stats.verdicts || {};
+  INST = i;
+  $("#hello").textContent = `${hour < 18 ? "Bonjour" : "Bonsoir"}, ${i.name}`;
+  $("#today").textContent = `${DAY.charAt(0).toUpperCase() + DAY.slice(1)} · ${d.publications.length} message(s) publié(s) · ${d.alerts.length} signalement(s)`;
+  $("#hsLink").href = `${STATE.hashscan}/topic/${i.topicId}`;
+  const verifs = Object.values(v).reduce((a, b) => a + b, 0);
+  const fakes = (v.FAKE || 0) + (v.NOT_OFFICIAL || 0) + (v.MODIFIED || 0);
+  $("#chart").innerHTML = barsHtml(last7(d.stats.daily));
+  const parts = [{ value: v.AUTHENTIC || 0, color: "#3ddc97", l: "Authentiques" }, { value: v.MODIFIED || 0, color: "#ffb547", l: "Modifiés" }, { value: v.FAKE || 0, color: "#ff5a67", l: "Faux" }, { value: v.NOT_OFFICIAL || 0, color: "#7b6cf6", l: "Non officiels" }];
+  $("#donut").innerHTML = donutSvg(parts, String(verifs), "vérifications");
+  $("#legend").innerHTML = parts.map((p) => `<span><i style="background:${p.color}"></i>${p.l}<b>${p.value}</b></span>`).join("");
+  const lastPub = d.publications[0];
+  const tile = (ic, val, l, h, delta) => `<div class="tile">${delta || ""}<div class="ico">${icon(ic)}</div><div class="v">${val}</div><div class="l">${l}</div><div class="h">${h}</div></div>`;
+  $("#tiles").innerHTML = [
+    tile("link", (ch.domains || []).length + (ch.senders || []).length + (ch.phones || []).length + (ch.social || []).length, "Canaux officiels", "sites, SMS, numéros, réseaux sociaux"),
+    tile("send", d.publications.length, "Messages publiés", lastPub ? "dernier : " + fmtShort(lastPub.at) : "aucun pour l'instant"),
+    tile("eye", verifs, "Vérifications", "par des citoyens, à votre nom"),
+    tile("alert", fakes, "Faux détectés", "modifiés, usurpés ou non officiels", fakes ? '<span class="delta bad">à surveiller</span>' : ""),
+  ].join("");
+  $("#nPubs").textContent = d.publications.length || "";
+  $("#nAlerts").textContent = d.alerts.length || "";
+  const f = $("#chForm");
+  f.domains.value = (ch.domains || []).join(", "); f.senders.value = (ch.senders || []).join(", "); f.phones.value = (ch.phones || []).join(", "); f.social.value = (ch.social || []).join("\n");
+  $("#pubs").innerHTML = d.publications.length ? d.publications.map((p) => `<tr>
+    <td class="small" style="white-space:nowrap">${fmtShort(p.at)}</td>
+    <td><b>${esc(p.title || p.kind)}</b> <span class="badge mid">${esc(p.kind)}</span>${p.private ? ' <span class="badge mid">empreinte seule</span>' : ""}<div class="small muted" style="max-width:560px">${esc((p.text || "").slice(0, 150))}${p.text && p.text.length > 150 ? "…" : ""}</div></td>
+    <td><a class="code" href="/?code=${esc(p.code)}" target="_blank" rel="noopener">${esc(p.code)}</a></td>
+    <td class="small"><a target="_blank" rel="noopener" href="${STATE.hashscan}/topic/${p.topicId}">Message n° ${p.sequence} ↗</a></td></tr>`).join("")
+    : `<tr><td colspan="4" class="muted">Aucun message publié. Publiez votre prochain communiqué depuis « Publier ».</td></tr>`;
+  $("#alerts").innerHTML = d.alerts.length ? d.alerts.map((a) => `<div class="it"><span class="when">${fmtShort(a.at)}</span>
+    <div><div>${esc(a.excerpt)}</div>${a.domains && a.domains.length ? `<div class="small muted">Liens : ${esc(a.domains.join(", "))}</div>` : ""}</div></div>`).join("")
+    : `<p class="muted small">Aucun signalement pour l'instant.</p>`;
+  $(".side .plan").innerHTML = `<b>Canal officiel Hedera</b>${esc(i.topicId)} · ${i.status === "ACCREDITED" ? "accréditée" : "révoquée"}<div class="bar"><i style="width:${verifs ? Math.round(((v.AUTHENTIC || 0) / verifs) * 100) : 0}%"></i></div><div style="margin-top:6px">${verifs ? Math.round(((v.AUTHENTIC || 0) / verifs) * 100) : 0} % des vérifications sont authentiques</div>`;
+}
+(async () => {
+  if (!(await requireRole("institution"))) return;
+  ID = ME.user.instId;
+  const main = dashShell({
+    subtitle: "Espace institution",
+    user: { label: ME.institution ? ME.institution.name : ME.user.email, sub: ME.user.email },
+    plan: "",
+    groups: [
+      { label: "Tableau de bord", items: [{ href: "#apercu", icon: "home", label: "Vue d'ensemble" }, { href: "#publier", icon: "send", label: "Publier" }, { href: "#publications", icon: "list", label: "Messages publiés", badge: "nPubs" }, { href: "#signalements", icon: "alert", label: "Signalements", badge: "nAlerts" }] },
+      { label: "Compte", items: [{ href: "#abonnement", icon: "card", label: "Abonnement", badge: "nInv" }, { href: "#canaux", icon: "link", label: "Canaux officiels" }, { href: "#securite", icon: "lock", label: "Sécurité" }] },
+    ],
+  });
+  main.appendChild($("#content").content.cloneNode(true));
+  bind();
+  load();
+  loadBilling();
+})();
+async function loadBilling() {
+  const b = await api("/api/billing/me");
+  const s = b.sub, active = s.status === "ACTIVE";
+  const days = s.trialEnds ? Math.max(0, Math.ceil((new Date(s.trialEnds) - Date.now()) / 864e5)) : 0;
+  const cls = b.pct >= 100 ? "full" : b.pct >= 80 ? "warn" : "";
+  const planName = active ? b.plans.find((p) => p.id === s.plan).name : null;
+  $("#planBox").innerHTML = `<h3>Votre offre</h3>
+    <div class="v" style="font-size:28px;font-weight:700;margin:6px 0">${active ? "Sahih " + esc(planName) : s.status === "TRIAL" ? "Essai gratuit" : "Essai terminé"}</div>
+    <p class="hint">${active ? `Période : ${monthName(s.periodKey)}` : s.status === "TRIAL" ? `${days} jour(s) restant(s) · ${b.trial.quota} messages inclus` : "Choisissez une offre pour continuer à publier."}</p>
+    <div class="meter ${cls}"><i style="width:${b.pct}%"></i></div>
+    <div class="small"><b>${b.used.toLocaleString("fr-FR")}</b> / ${b.quota.toLocaleString("fr-FR")} messages signés en ${monthName(b.month)}</div>
+    ${b.pct >= 80 ? `<div class="alert ${b.pct >= 100 ? "err" : ""}" style="margin-top:12px">${b.pct >= 100 ? (active ? "Quota dépassé : les messages supplémentaires seront facturés le mois prochain." : "Quota atteint : choisissez une offre pour continuer.") : "Vous avez utilisé plus de 80 % de votre quota."}</div>` : ""}`;
+  $("#planCards").innerHTML = b.plans.map((p) => {
+    const cur = active && s.plan === p.id, pending = !active && s.requestedPlan === p.id;
+    return `<div class="pcard ${cur ? "cur" : ""}"><div class="row" style="justify-content:space-between"><b style="font-size:17px">${esc(p.name)}</b>${cur ? '<span class="badge ok">Offre actuelle</span>' : pending ? '<span class="badge mid">En attente de paiement</span>' : ""}</div>
+      <div class="pp">${p.price} <small>TND HT / mois</small></div>
+      <ul>${p.features.map((f) => `<li>${esc(f)}</li>`).join("")}</ul>
+      <button class="btn ${cur ? "light" : ""}" ${cur ? "disabled" : ""} onclick="choose('${p.id}', this)">${cur ? "Offre actuelle" : active ? "Passer à " + esc(p.name) : "Choisir " + esc(p.name)}</button></div>`;
+  }).join("");
+  const unpaid = b.invoices.filter((i) => i.status === "UNPAID").length;
+  $("#nInv").textContent = unpaid || "";
+  $("#invs").innerHTML = b.invoices.length ? b.invoices.map((i) => `<tr>
+    <td><b class="mono">${esc(i.number)}</b><div class="small muted">émise le ${fmtShort(i.issuedAt)}</div></td>
+    <td>${esc(monthName(i.period))}<div class="small muted">${esc(i.plan === "PREMIUM" ? "Premium" : "Pro")}${i.items.length > 1 ? " + dépassement" : ""}</div></td>
+    <td><b>${money(i.ttc)}</b><div class="small muted">HT ${money(i.ht)}</div></td>
+    <td>${invBadge(i.status)}${i.payment && i.payment.reference ? `<div class="small muted">${esc(i.payment.method)} · ${esc(i.payment.reference)}</div>` : ""}</td>
+    <td class="small"><a target="_blank" rel="noopener" href="${STATE.hashscan}/topic/${i.hcsTopic}">Émission n° ${i.hcsSeq}${i.paidHcsSeq ? ` · paiement n° ${i.paidHcsSeq}` : ""} ↗</a></td>
+    <td><div class="row" style="flex-wrap:nowrap;gap:6px"><a class="btn light" style="padding:7px 12px;font-size:13px" href="/api/billing/invoices/${i.id}/pdf">${icon("file")} PDF</a>
+      ${i.status === "UNPAID" ? `<button class="btn" style="padding:7px 12px;font-size:13px" onclick="declare('${i.id}','${esc(i.number)}')">Déclarer un paiement</button>` : ""}</div></td></tr>`).join("")
+    : `<tr><td colspan="6" class="muted">Aucune facture. Choisissez une offre pour recevoir votre première facture.</td></tr>`;
+}
+async function choose(plan, btn) {
+  btn.disabled = true; btn.textContent = "Création de la facture…";
+  try {
+    const inv = await api("/api/billing/subscribe", { method: "POST", body: { plan } });
+    $("#billOut").innerHTML = `<div class="box" style="margin-top:18px"><h3>Facture ${esc(inv.number)} émise : ${money(inv.ttc)} TTC</h3>
+      <p class="hint">Réglez par virement en indiquant la référence <b>${esc(inv.number)}</b>, ou par bon de commande pour les institutions publiques, puis cliquez « Déclarer un paiement ». Votre offre est activée dès la confirmation du paiement.</p>
+      <div class="row"><a class="btn light" href="/api/billing/invoices/${inv.id}/pdf">${icon("file")} Télécharger la facture</a><button class="btn light" disabled title="Nécessite un contrat avec une passerelle de paiement (Konnect, Flouci, ClicToPay)">Payer par carte (bientôt)</button></div></div>`;
+  } catch (e) { $("#billOut").innerHTML = `<div class="alert err" style="margin-top:18px">${esc(e.message)}</div>`; }
+  loadBilling();
+}
+async function declare(id, number) {
+  const reference = prompt(`Référence du virement ou du bon de commande pour la facture ${number} :`);
+  if (!reference) return;
+  const method = /^(bc|bon)/i.test(reference) ? "PO" : "TRANSFER";
+  try { await api(`/api/billing/invoices/${id}/declare`, { method: "POST", body: { method, reference } }); loadBilling(); }
+  catch (e) { $("#billOut").innerHTML = `<div class="alert err" style="margin-top:18px">${esc(e.message)}</div>`; }
+}
+function bind() {
+  $("#pubForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    if (!f.text.value.trim()) { $("#pubOut").innerHTML = `<div class="alert err">Saisissez le texte du message.</div>`; return; }
+    $("#pubBtn").disabled = true; $("#pubBtn").textContent = "Signature et publication…";
+    try {
+      const r = await api(`/api/institutions/${ID}/publish`, { method: "POST", body: { kind: f.kind.value, title: f.title.value, text: f.text.value, isPrivate: f.isPrivate.checked } });
+      const pub = r.publication, url = r.url;
+      const signed = (pub.text || "") + `\n✔ Message officiel vérifiable sur Sahih : ${pub.code}`;
+      const enc = encodeURIComponent;
+      $("#pubOut").innerHTML = `<h3>Signé sur Hedera : prêt à diffuser</h3>
+        <p class="hint">Copiez ce texte tel quel sur vos canaux. La dernière ligne permet à chacun de le vérifier.</p>
+        <textarea id="signedText" rows="5" readonly style="font-size:14px">${esc(signed)}</textarea>
+        <div class="row" style="margin-top:10px;gap:8px">
+          <button class="btn" type="button" id="copySigned">Copier le texte</button>
+          <a class="btn light" style="padding:9px 14px" target="_blank" rel="noopener" href="https://wa.me/?text=${enc(signed)}">WhatsApp</a>
+          <a class="btn light" style="padding:9px 14px" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=${enc(url)}">Facebook</a>
+          <a class="btn light" style="padding:9px 14px" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=${enc(signed.slice(0, 250))}">X</a>
+          <a class="btn light" style="padding:9px 14px" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=${enc(url)}">LinkedIn</a>
+          <a class="btn light" style="padding:9px 14px" target="_blank" rel="noopener" href="https://t.me/share/url?url=${enc(url)}&text=${enc(pub.text || "")}">Telegram</a>
+        </div>
+        <div class="row" style="gap:16px;flex-wrap:nowrap;align-items:center;margin-top:14px"><img src="${r.qr}" alt="QR code de vérification" style="width:110px;border-radius:10px;background:#fff;padding:5px">
+        <div class="small"><span class="code" style="font-size:16px">${esc(pub.code)}</span><p class="muted" style="margin-top:6px">QR code pour les affiches et documents imprimés.<br>Message n° ${pub.sequence} · canal ${esc(pub.topicId)}</p></div></div>`;
+      $("#copySigned").onclick = async () => { try { await navigator.clipboard.writeText(signed); $("#copySigned").textContent = "Copié"; } catch { $("#signedText").select(); document.execCommand("copy"); $("#copySigned").textContent = "Copié"; } };
+      f.reset(); load(); loadBilling();
+    } catch (err) { $("#pubOut").innerHTML = `<div class="alert err">${err.status === 402 ? esc(err.message) + ' <a href="#abonnement">Voir les offres</a>' : "La publication a échoué : " + esc(err.message)}</div>`; }
+    finally { $("#pubBtn").disabled = false; $("#pubBtn").textContent = "Signer et publier sur Hedera"; }
+  };
+  $("#chForm").onsubmit = async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    $("#chBtn").disabled = true; $("#chOut").textContent = "Envoi…";
+    try { await api(`/api/institutions/${ID}/channels`, { method: "POST", body: { domains: f.domains.value, senders: f.senders.value, phones: f.phones.value, social: f.social.value } }); $("#chOut").textContent = "Mis à jour sur Hedera."; load(); }
+    catch (err) { $("#chOut").textContent = "Échec : " + err.message; }
+    finally { $("#chBtn").disabled = false; }
+  };
+  $("#pwForm").onsubmit = async (e) => {
+    e.preventDefault();
+    try { await api("/api/auth/password", { method: "POST", body: { current: $("#cur").value, next: $("#next").value } }); $("#pwOut").textContent = "Mot de passe changé."; e.target.reset(); }
+    catch (err) { $("#pwOut").textContent = err.message; }
+  };
+}
+</script>
+</body></html>

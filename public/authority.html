@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sahih — Console de l'autorité</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&family=Noto+Kufi+Arabic:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="/img/favicon.png"><link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body class="theme-dash">
+<template id="content">
+  <section class="panel" id="apercu">
+    <div class="panel-head">
+      <div><h1>Console de l'autorité</h1><p>Vous seul écrivez dans le registre de confiance : chaque accréditation et chaque révocation y sont publiques et définitives.</p></div>
+      <div class="row"><a class="btn light" id="regLink" target="_blank" rel="noopener">Registre sur HashScan</a><a class="btn" href="#accrediter">+ Accréditer</a></div>
+    </div>
+    <div class="grid" style="grid-template-columns:minmax(0,2fr) minmax(0,1fr)">
+      <div class="box"><div class="row" style="justify-content:space-between"><h3>Vérifications citoyennes</h3><span class="badge mid">7 derniers jours</span></div><p class="hint">Toutes institutions confondues.</p><div id="chart"></div></div>
+      <div class="box"><h3>Verdicts</h3><p class="hint">Ce que Sahih a établi sur Hedera.</p><div class="donut" id="donut"></div><div class="legend" id="legend"></div></div>
+    </div>
+    <div class="grid g4" style="margin-top:18px" id="tiles"></div>
+  </section>
+
+  <section class="panel" id="demandes">
+    <div class="panel-head"><div><h1 style="font-size:24px">Demandes d'accréditation</h1><p>Vérifiez l'identité du référent hors ligne (courrier officiel, appel au standard) avant d'approuver.</p></div></div>
+    <div id="apps"></div>
+  </section>
+
+  <section class="panel" id="institutions">
+    <div class="panel-head"><div><h1 style="font-size:24px">Institutions</h1><p>Accréditations inscrites dans le registre de confiance.</p></div></div>
+    <div class="box" style="overflow:auto"><table><thead><tr><th>Institution</th><th>Compte Hedera</th><th>Accès</th><th>Statut</th><th></th></tr></thead><tbody id="list"></tbody></table></div>
+    <div id="accessOut"></div>
+  </section>
+
+  <section class="panel" id="signalements">
+    <div class="panel-head"><div><h1 style="font-size:24px">Signalements récents</h1><p>Campagnes d'usurpation repérées par les citoyens, toutes institutions.</p></div></div>
+    <div class="box list" id="reports"></div>
+  </section>
+
+  <section class="panel" id="facturation">
+    <div class="panel-head"><div><h1 style="font-size:24px">Facturation</h1><p>Abonnements des institutions. Chaque facture et chaque paiement confirmé sont ancrés sur Hedera.</p></div></div>
+    <div class="grid g4" id="billTiles"></div>
+    <div class="box" style="margin-top:18px;overflow:auto">
+      <h3>Factures</h3>
+      <table><thead><tr><th>N°</th><th>Institution</th><th>Période</th><th>TTC</th><th>Statut</th><th></th></tr></thead><tbody id="allInvs"></tbody></table>
+    </div>
+    <div class="box" style="margin-top:18px;overflow:auto">
+      <h3>Abonnements et consommation du mois</h3>
+      <table><thead><tr><th>Institution</th><th>Offre</th><th>Messages ce mois</th><th></th></tr></thead><tbody id="subsTable"></tbody></table>
+    </div>
+  </section>
+
+  <section class="panel" id="accrediter">
+    <div class="panel-head"><div><h1 style="font-size:24px">Accréditer directement</h1><p>Pour une institution vérifiée sans passer par une demande. Crée son compte Hedera, son canal officiel et son entrée au registre.</p></div></div>
+    <form class="box" id="form">
+      <div class="grid g3" style="gap:0 16px">
+        <div><label style="margin-top:0">Nom officiel</label><input name="name" required></div>
+        <div><label style="margin-top:0">Type</label><input name="kind"></div>
+        <div><label style="margin-top:0">Autres noms ou sigles</label><input name="aliases"></div>
+        <div><label>Domaines officiels</label><input name="domains"></div>
+        <div><label>Expéditeurs SMS</label><input name="senders"></div>
+        <div><label>Numéros officiels</label><input name="phones"></div>
+      </div>
+      <label>Réseaux sociaux officiels (séparés par des virgules)</label><input name="social" placeholder="facebook.com/page, instagram.com/compte, wa.me/216…">
+      <div class="row" style="margin-top:14px"><button class="btn" id="go">Accréditer sur Hedera</button><span class="small muted">3 transactions, environ 8 s</span></div>
+      <div id="out" style="margin-top:12px"></div>
+    </form>
+  </section>
+</template>
+<script src="/common.js"></script>
+<script>
+let OV = null;
+const yes = (b, t, f) => b ? `<span class="badge ok">${t}</span>` : `<span class="badge bad">${f}</span>`;
+const tile = (ic, val, l, h, delta) => `<div class="tile">${delta || ""}<div class="ico">${icon(ic)}</div><div class="v">${val}</div><div class="l">${l}</div><div class="h">${h}</div></div>`;
+async function refresh() {
+  [STATE, OV] = await Promise.all([api("/api/state"), api("/api/authority/overview")]);
+  const c = STATE.config, t = OV.stats.total || {};
+  $("#regLink").href = `${STATE.hashscan}/topic/${c.registryTopicId}`;
+  const verifs = Object.values(t).reduce((a, b) => a + b, 0);
+  const fakes = (t.FAKE || 0) + (t.MODIFIED || 0) + (t.NOT_OFFICIAL || 0) + (t.SUSPICIOUS || 0);
+  $("#chart").innerHTML = barsHtml(last7(OV.stats.daily));
+  const parts = [{ value: t.AUTHENTIC || 0, color: "#3ddc97", l: "Authentiques" }, { value: t.MODIFIED || 0, color: "#ffb547", l: "Modifiés" }, { value: (t.FAKE || 0) + (t.NOT_OFFICIAL || 0), color: "#ff5a67", l: "Faux / non officiels" }, { value: (t.SUSPICIOUS || 0) + (t.UNKNOWN || 0), color: "#7b6cf6", l: "Suspects / inconnus" }];
+  $("#donut").innerHTML = donutSvg(parts, String(verifs), "vérifications");
+  $("#legend").innerHTML = parts.map((p) => `<span><i style="background:${p.color}"></i>${p.l}<b>${p.value}</b></span>`).join("");
+  const pending = OV.applications.filter((a) => a.status === "PENDING");
+  $("#tiles").innerHTML = [
+    tile("building", STATE.stats.institutions, "Institutions accréditées", "inscrites au registre"),
+    tile("inbox", pending.length, "Demandes en attente", "à vérifier", pending.length ? '<span class="delta">à traiter</span>' : ""),
+    tile("send", STATE.stats.publications, "Messages officiels", "signés sur Hedera"),
+    tile("alert", fakes, "Faux détectés", `${STATE.stats.reports} signalement(s) citoyens`, fakes ? '<span class="delta bad">usurpations</span>' : ""),
+  ].join("");
+  $("#nApps").textContent = pending.length || "";
+  $("#nRep").textContent = STATE.stats.reports || "";
+  $(".side .plan").innerHTML = `<b>Registre de confiance</b>${esc(c.registryTopicId)} · compte ${esc(c.authorityAccount)}<div class="bar"><i style="width:${verifs ? Math.round(((t.AUTHENTIC || 0) / verifs) * 100) : 0}%"></i></div><div style="margin-top:6px">${verifs ? Math.round(((t.AUTHENTIC || 0) / verifs) * 100) : 0} % de messages authentiques</div>`;
+  $("#apps").innerHTML = pending.length ? pending.map((a) => `<div class="box" style="margin-bottom:14px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div><h3>${esc(a.name)}</h3><div class="small muted">${esc(a.kind)} · reçue le ${fmtDate(a.createdAt)}</div></div>
+        <div class="row"><button class="btn" onclick="approve('${a.id}', this)">Approuver et accréditer</button><button class="btn danger" onclick="reject('${a.id}')">Refuser</button></div>
+      </div>
+      <div class="grid g2" style="margin-top:12px;gap:6px 24px;font-size:14.5px">
+        <div><span class="muted">Référent :</span> ${esc(a.contactName)}${a.contactRole ? ", " + esc(a.contactRole) : ""}</div>
+        <div><span class="muted">E-mail :</span> ${esc(a.email)} ${yes(a.emailOnOfficialDomain, "sur le domaine officiel", "hors domaine officiel")}</div>
+        <div><span class="muted">Domaines :</span> ${esc(a.domains.join(", "))}</div>
+        <div><span class="muted">Expéditeurs SMS :</span> ${esc(a.senders.join(", ") || "—")}</div>
+        <div style="grid-column:1/-1"><span class="muted">Réseaux sociaux :</span> ${esc((a.social || []).join(", ") || "—")}</div>
+      </div></div>`).join("") : `<div class="box"><p class="muted">Aucune demande en attente.</p></div>`;
+  $("#list").innerHTML = OV.institutions.map((i) => `<tr>
+    <td><b>${esc(i.name)}</b><div class="small muted">${esc([...(i.channels.domains || []), ...(i.channels.social || [])].join(", "))}</div></td>
+    <td><a class="mono" target="_blank" rel="noopener" href="${STATE.hashscan}/account/${i.account}">${i.account}</a></td>
+    <td class="small">${i.access.length ? esc(i.access.join(", ")) : '<span class="muted">aucun</span>'}</td>
+    <td>${i.status === "ACCREDITED" ? '<span class="badge ok">Accréditée</span>' : '<span class="badge bad">Révoquée</span>'}</td>
+    <td><div class="row" style="flex-wrap:nowrap;gap:6px">${i.status === "ACCREDITED" ? `<button class="btn light" style="padding:7px 12px;font-size:13px" onclick="access('${esc(i.id)}','${esc(i.name)}')">${i.access.length ? "Réinitialiser l'accès" : "Créer un accès"}</button><button class="btn danger" onclick="revoke('${esc(i.id)}')">Révoquer</button>` : ""}</div></td></tr>`).join("");
+  const name = (id) => (OV.institutions.find((i) => i.id === id) || {}).name || "institution non identifiée";
+  $("#reports").innerHTML = OV.reports.length ? OV.reports.map((r) => `<div class="it"><span class="when">${fmtShort(r.at)}</span><div><b>${esc(name(r.claimed))}</b> · <span class="small muted">${esc(r.verdict)}</span><div>${esc(r.excerpt)}</div></div></div>`).join("") : `<p class="muted small">Aucun signalement.</p>`;
+}
+async function approve(id, btn) {
+  btn.disabled = true; btn.textContent = "Accréditation sur Hedera…";
+  try { const r = await api(`/api/applications/${id}/approve`, { method: "POST" }); note(`${r.institution.name} est accréditée : compte ${r.institution.account}, canal ${r.institution.topicId}. Son référent peut se connecter.`); refresh(); }
+  catch (e) { note(e.message, true); btn.disabled = false; btn.textContent = "Approuver et accréditer"; }
+}
+async function reject(id) {
+  const reason = prompt("Motif du refus :", "Identité non vérifiée");
+  if (reason === null) return;
+  try { await api(`/api/applications/${id}/reject`, { method: "POST", body: { reason } }); refresh(); } catch (e) { note(e.message, true); }
+}
+async function access(id, name) {
+  const email = prompt(`E-mail du référent de ${name} :`);
+  if (!email) return;
+  try {
+    const r = await api(`/api/institutions/${id}/access`, { method: "POST", body: { email } });
+    $("#accessOut").innerHTML = `<div class="box" style="margin-top:16px"><h3>Accès créé pour ${esc(name)}</h3><p class="hint">Transmettez ces identifiants par un canal sûr. Le mot de passe n'est affiché qu'une fois.</p><div class="key">E-mail : ${esc(r.email)}<br>Mot de passe : ${esc(r.password)}</div></div>`;
+    refresh();
+  } catch (e) { note(e.message, true); }
+}
+async function revoke(id) {
+  const reason = prompt("Motif de la révocation (publié sur Hedera) :", "Clé compromise");
+  if (reason === null) return;
+  try { await api(`/api/institutions/${id}/revoke`, { method: "POST", body: { reason } }); refresh(); } catch (e) { note(e.message, true); }
+}
+function note(msg, err) { $("#accessOut").innerHTML = `<div class="alert ${err ? "err" : "ok"}" style="margin-top:16px">${esc(msg)}</div>`; location.hash = "#institutions"; }
+(async () => {
+  if (!(await requireRole("authority"))) return;
+  const main = dashShell({
+    subtitle: "Autorité de confiance",
+    user: { label: "Autorité", sub: ME.user.email },
+    plan: "",
+    groups: [
+      { label: "Supervision", items: [{ href: "#apercu", icon: "home", label: "Vue d'ensemble" }, { href: "#demandes", icon: "inbox", label: "Demandes", badge: "nApps" }, { href: "#institutions", icon: "building", label: "Institutions" }, { href: "#signalements", icon: "alert", label: "Signalements", badge: "nRep" }] },
+      { label: "Registre", items: [{ href: "#facturation", icon: "card", label: "Facturation", badge: "nBill" }, { href: "#accrediter", icon: "plus", label: "Accréditer" }] },
+    ],
+  });
+  main.appendChild($("#content").content.cloneNode(true));
+  $("#form").onsubmit = async (e) => {
+    e.preventDefault();
+    const body = Object.fromEntries(new FormData(e.target));
+    $("#go").disabled = true; $("#go").textContent = "Transactions en cours…";
+    try { const i = await api("/api/institutions", { method: "POST", body }); $("#out").innerHTML = `<div class="alert ok">${esc(i.name)} accréditée : compte ${i.account}, canal ${i.topicId}. Créez-lui un accès dans « Institutions ».</div>`; e.target.reset(); refresh(); }
+    catch (err) { $("#out").innerHTML = `<div class="alert err">${esc(err.message)}</div>`; }
+    finally { $("#go").disabled = false; $("#go").textContent = "Accréditer sur Hedera"; }
+  };
+  refresh();
+  loadBilling();
+})();
+async function loadBilling() {
+  const b = await api("/api/billing/all");
+  const S = b.summary;
+  $("#billTiles").innerHTML = [
+    tile("chart", money(S.mrr).replace(" TND", ""), "Revenu mensuel récurrent (TND HT)", `${S.activeCount} abonnement(s) actif(s)`),
+    tile("check", money(S.paidThisMonth).replace(" TND", ""), "Encaissé ce mois (TND TTC)", "paiements confirmés"),
+    tile("file", money(S.unpaid).replace(" TND", ""), "À encaisser (TND TTC)", "factures en attente"),
+    tile("inbox", S.declared, "Paiements à confirmer", "déclarés par les institutions", S.declared ? '<span class="delta">à vérifier</span>' : ""),
+  ].join("");
+  $("#nBill").textContent = S.declared || "";
+  $("#allInvs").innerHTML = b.invoices.length ? b.invoices.map((i) => `<tr>
+    <td><b class="mono">${esc(i.number)}</b><div class="small muted">${fmtShort(i.issuedAt)}</div></td>
+    <td>${esc(i.instName)}</td><td>${esc(monthName(i.period))}</td><td><b>${money(i.ttc)}</b></td>
+    <td>${invBadge(i.status)}${i.payment && i.payment.reference ? `<div class="small muted">${esc(i.payment.method)} · ${esc(i.payment.reference)}</div>` : ""}</td>
+    <td><div class="row" style="flex-wrap:nowrap;gap:6px"><a class="btn light" style="padding:7px 12px;font-size:13px" href="/api/billing/invoices/${i.id}/pdf">PDF</a>
+      ${i.status === "UNPAID" || i.status === "DECLARED" ? `<button class="btn" style="padding:7px 12px;font-size:13px" onclick="confirmPay('${i.id}','${esc(i.number)}',${i.status === "DECLARED"})">Confirmer le paiement</button>` : ""}</div></td></tr>`).join("")
+    : `<tr><td colspan="6" class="muted">Aucune facture pour l'instant.</td></tr>`;
+  $("#subsTable").innerHTML = b.subscriptions.map((x) => `<tr><td><b>${esc(x.name)}</b></td>
+    <td>${x.sub.status === "ACTIVE" ? `<span class="badge ok">${x.sub.plan === "PREMIUM" ? "Premium" : "Pro"}</span>` : x.sub.status === "TRIAL" ? '<span class="badge mid">Essai</span>' : '<span class="badge bad">Essai terminé</span>'}</td>
+    <td style="min-width:220px"><div class="meter ${x.pct >= 100 ? "full" : x.pct >= 80 ? "warn" : ""}" style="margin:0 0 4px"><i style="width:${x.pct}%"></i></div><span class="small">${x.used} / ${x.quota}</span></td><td></td></tr>`).join("");
+}
+async function confirmPay(id, number, declared) {
+  let reference = null;
+  if (!declared) { reference = prompt(`Référence du paiement reçu pour ${number} (virement, bon de commande) :`); if (!reference) return; }
+  else if (!confirm(`Confirmer la réception du paiement de la facture ${number} ? Cette confirmation est enregistrée sur Hedera.`)) return;
+  try { await api(`/api/billing/invoices/${id}/confirm`, { method: "POST", body: { reference } }); loadBilling(); }
+  catch (e) { alert(e.message); }
+}
+</script>
+</body></html>
