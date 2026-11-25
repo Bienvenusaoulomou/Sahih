@@ -44,6 +44,13 @@ async function handle(update) {
   const m = update.message;
   if (!m) return;
   const text = m.text || m.caption || "";
+  if ((m.photo || (m.document && /^image\//.test(m.document.mime_type || ""))) && !/SAH-[0-9A-F]{6}/i.test(text)) {
+    const site = process.env.PUBLIC_URL || "le site Sahih";
+    return call("sendMessage", {
+      chat_id: m.chat.id, parse_mode: "HTML",
+      text: "🖼️ <b>Vérifier une affiche</b>\n\nLes affiches signées portent un bandeau Sahih avec un QR code et un code <code>SAH-XXXXXX</code>.\n• Scannez le QR code avec votre téléphone, ou envoyez-moi le code.\n• Pas de code ? Déposez l'image dans « Vérifier une affiche » sur " + esc(site) + " : Sahih la compare aux affiches officielles et montre les zones modifiées.\n\n⚠️ Une affiche sans bandeau ni code n'a pas été signée par l'institution.",
+    });
+  }
   if (!text || text === "/start" || text === "/help") {
     return call("sendMessage", {
       chat_id: m.chat.id, parse_mode: "HTML",
@@ -52,7 +59,7 @@ async function handle(update) {
   }
   await call("sendChatAction", { chat_id: m.chat.id, action: "typing" });
   let r;
-  const code = text.trim().match(/^SAH-[0-9A-F]{6}$/i);
+  const code = text.trim().match(/^SAH-[0-9A-F]{6}$/i) || ((m.photo || m.document) && text.match(/SAH-[0-9A-F]{6}/i));
   if (code) {
     const c = engine.byCode(code[0]);
     const body = c ? `${ICON[c.verdict]} <b>${c.verdict === "AUTHENTIC" ? "Authentique" : "Invalide"}</b>\n${esc(c.institution && c.institution.name)} · ${esc(c.publication.title)}\n\n${esc(c.publication.text || "(message privé : empreinte uniquement)")}\n\n<a href="${c.links.topic}">Preuve sur Hedera</a>` : "❓ Code inconnu.";

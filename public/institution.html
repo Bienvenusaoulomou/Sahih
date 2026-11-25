@@ -28,12 +28,18 @@
     <div class="grid" style="grid-template-columns:minmax(0,3fr) minmax(0,2fr)">
       <form class="box" id="pubForm">
         <div class="grid g2" style="gap:0 12px">
-          <div><label for="kind" style="margin-top:0">Type</label><select id="kind" name="kind"><option value="communiqué">Communiqué</option><option value="sms">SMS ou modèle de SMS</option><option value="annonce">Annonce</option><option value="avis">Avis</option></select></div>
+          <div><label for="kind" style="margin-top:0">Type</label><select id="kind" name="kind"><option value="communiqué">Communiqué</option><option value="sms">SMS ou modèle de SMS</option><option value="annonce">Annonce</option><option value="avis">Avis</option><option value="affiche">Affiche, image ou photo</option></select></div>
           <div><label for="title" style="margin-top:0">Titre</label><input id="title" name="title" placeholder="Ex. Coupure programmée"></div>
         </div>
-        <label for="ptext">Texte exact du message</label>
+        <div id="imgZone" hidden>
+          <label for="pimg">Affiche, image ou photo</label>
+          <label class="drop" for="pimg" id="drop"><input type="file" id="pimg" accept="image/jpeg,image/png,image/webp" hidden>
+            <span id="dropTxt"><b>Choisissez une image</b> ou déposez-la ici<br><span class="small muted">JPG, PNG ou WEBP · l'image est signée telle quelle</span></span>
+            <img id="pimgPrev" alt="" hidden></label>
+        </div>
+        <label for="ptext" id="ptextLbl">Texte exact du message</label>
         <textarea id="ptext" name="text" class="big-input" placeholder="Le texte tel qu'il sera diffusé"></textarea>
-        <label class="row" style="gap:8px;font-weight:500"><input type="checkbox" name="isPrivate" style="width:auto"> Message individuel : ne publier que son empreinte</label>
+        <label class="row" style="gap:8px;font-weight:500" id="privRow"><input type="checkbox" name="isPrivate" style="width:auto"> Message individuel : ne publier que son empreinte</label>
         <button class="btn" id="pubBtn" style="margin-top:14px">Signer et publier sur Hedera</button>
       </form>
       <div class="box" id="pubOut"><h3>Comment ça marche</h3><p class="hint">1. Écrivez le texte exact et signez-le ici.<br>2. Sahih l'horodate sur Hedera et vous donne un texte prêt à diffuser, avec le code <span class="code">SAH-XXXXXX</span> et un QR code.<br>3. Diffusez-le sur vos canaux (SMS, Facebook, WhatsApp, affiche…). Toute copie modifiée sera détectée.</p></div>
@@ -87,6 +93,7 @@
   </section>
 </template>
 <script src="/common.js"></script>
+<script src="/imgsig.js"></script>
 <script>
 let ID = null, INST = null;
 const DAY = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
@@ -118,7 +125,7 @@ async function load() {
   f.domains.value = (ch.domains || []).join(", "); f.senders.value = (ch.senders || []).join(", "); f.phones.value = (ch.phones || []).join(", "); f.social.value = (ch.social || []).join("\n");
   $("#pubs").innerHTML = d.publications.length ? d.publications.map((p) => `<tr>
     <td class="small" style="white-space:nowrap">${fmtShort(p.at)}</td>
-    <td><b>${esc(p.title || p.kind)}</b> <span class="badge mid">${esc(p.kind)}</span>${p.private ? ' <span class="badge mid">empreinte seule</span>' : ""}<div class="small muted" style="max-width:560px">${esc((p.text || "").slice(0, 150))}${p.text && p.text.length > 150 ? "…" : ""}</div></td>
+    <td>${p.media ? `<img src="${esc(p.media.url)}" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:8px;float:left;margin-right:10px">` : ""}<b>${esc(p.title || p.kind)}</b> <span class="badge mid">${esc(p.kind)}</span>${p.private ? ' <span class="badge mid">empreinte seule</span>' : ""}<div class="small muted" style="max-width:560px">${esc((p.text || "").slice(0, 150))}${p.text && p.text.length > 150 ? "…" : ""}</div></td>
     <td><a class="code" href="/?code=${esc(p.code)}" target="_blank" rel="noopener">${esc(p.code)}</a></td>
     <td class="small"><a target="_blank" rel="noopener" href="${STATE.hashscan}/topic/${p.topicId}">Message n° ${p.sequence} ↗</a></td></tr>`).join("")
     : `<tr><td colspan="4" class="muted">Aucun message publié. Publiez votre prochain communiqué depuis « Publier ».</td></tr>`;
@@ -193,9 +200,56 @@ async function declare(id, number) {
   catch (e) { $("#billOut").innerHTML = `<div class="alert err" style="margin-top:18px">${esc(e.message)}</div>`; }
 }
 function bind() {
+  const isImg = () => $("#kind").value === "affiche";
+  const syncKind = () => {
+    $("#imgZone").hidden = !isImg(); $("#privRow").hidden = isImg();
+    $("#ptextLbl").textContent = isImg() ? "Texte de l'affiche ou légende (facultatif)" : "Texte exact du message";
+    $("#ptext").placeholder = isImg() ? "Ex. Journée portes ouvertes le 12 décembre. Aide les citoyens à retrouver l'affiche." : "Le texte tel qu'il sera diffusé";
+    $("#ptext").classList.toggle("big-input", !isImg()); $("#ptext").rows = isImg() ? 3 : 6;
+  };
+  $("#kind").onchange = syncKind;
+  let IMG = null;
+  const pick = async (file) => {
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { $("#pubOut").innerHTML = `<div class="alert err">Format non pris en charge. Utilisez JPG, PNG ou WEBP.</div>`; return; }
+    try { IMG = await SahihImage.normalize(file); $("#pimgPrev").src = IMG.dataUrl; $("#pimgPrev").hidden = false; $("#dropTxt").hidden = true; }
+    catch (err) { $("#pubOut").innerHTML = `<div class="alert err">${esc(err.message)}</div>`; }
+  };
+  $("#pimg").onchange = (e) => pick(e.target.files[0]);
+  $("#drop").ondragover = (e) => { e.preventDefault(); $("#drop").classList.add("over"); };
+  $("#drop").ondragleave = () => $("#drop").classList.remove("over");
+  $("#drop").ondrop = (e) => { e.preventDefault(); $("#drop").classList.remove("over"); pick(e.dataTransfer.files[0]); };
+  const resetImg = () => { IMG = null; $("#pimg").value = ""; $("#pimgPrev").hidden = true; $("#dropTxt").hidden = false; };
+  const publishImage = async (f) => {
+    if (!IMG) { $("#pubOut").innerHTML = `<div class="alert err">Choisissez l'affiche ou l'image à signer.</div>`; return; }
+    $("#pubBtn").disabled = true; $("#pubBtn").textContent = "Signature et publication…";
+    try {
+      const r = await api(`/api/institutions/${ID}/publish-image`, { method: "POST", body: { title: f.title.value, text: f.text.value, image: IMG.dataUrl, dhash: IMG.dhash, w: IMG.w, h: IMG.h } });
+      const pub = r.publication, url = r.url, enc = encodeURIComponent;
+      const stamped = await SahihImage.stamp(IMG.dataUrl, { code: pub.code, qr: r.qr, institution: INST.name });
+      const caption = `${pub.title || "Affiche officielle"} — ${INST.name}\n✔ Affiche officielle vérifiable sur Sahih : ${pub.code}\n${url}`;
+      $("#pubOut").innerHTML = `<h3>Affiche signée sur Hedera : prête à diffuser</h3>
+        <p class="hint">Diffusez cette version : le bandeau en bas porte le QR code et le code ${esc(pub.code)}. Même recompressée par WhatsApp ou Facebook, Sahih la reconnaît, et toute retouche est repérée.</p>
+        <img src="${stamped}" alt="Affiche signée" style="width:100%;border-radius:12px;margin:6px 0 12px;border:1px solid rgba(255,255,255,.12)">
+        <div class="row" style="gap:8px">
+          <a class="btn" download="affiche-${esc(pub.code)}.jpg" href="${stamped}">Télécharger l'affiche signée</a>
+          <button class="btn light" type="button" id="copySigned" style="padding:9px 14px">Copier la légende</button>
+          <a class="btn light" style="padding:9px 14px" target="_blank" rel="noopener" href="https://wa.me/?text=${enc(caption)}">WhatsApp</a>
+          <a class="btn light" style="padding:9px 14px" target="_blank" rel="noopener" href="https://www.facebook.com/sharer/sharer.php?u=${enc(url)}">Facebook</a>
+          <a class="btn light" style="padding:9px 14px" target="_blank" rel="noopener" href="https://twitter.com/intent/tweet?text=${enc(caption.slice(0, 250))}">X</a>
+          <a class="btn light" style="padding:9px 14px" target="_blank" rel="noopener" href="https://www.linkedin.com/sharing/share-offsite/?url=${enc(url)}">LinkedIn</a>
+          <a class="btn light" style="padding:9px 14px" target="_blank" rel="noopener" href="https://t.me/share/url?url=${enc(url)}&text=${enc(pub.title || "Affiche officielle")}">Telegram</a>
+        </div>
+        <p class="small muted" style="margin-top:10px"><span class="code">${esc(pub.code)}</span> · empreinte de l'image signée dans le message n° ${pub.sequence} du canal ${esc(pub.topicId)}</p>`;
+      $("#copySigned").onclick = async () => { try { await navigator.clipboard.writeText(caption); $("#copySigned").textContent = "Copié"; } catch {} };
+      f.reset(); resetImg(); syncKind(); load(); loadBilling();
+    } catch (err) { $("#pubOut").innerHTML = `<div class="alert err">${err.status === 402 ? esc(err.message) + ' <a href="#abonnement">Voir les offres</a>' : "La publication a échoué : " + esc(err.message)}</div>`; }
+    finally { $("#pubBtn").disabled = false; $("#pubBtn").textContent = "Signer et publier sur Hedera"; }
+  };
   $("#pubForm").onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target;
+    if (isImg()) return publishImage(f);
     if (!f.text.value.trim()) { $("#pubOut").innerHTML = `<div class="alert err">Saisissez le texte du message.</div>`; return; }
     $("#pubBtn").disabled = true; $("#pubBtn").textContent = "Signature et publication…";
     try {

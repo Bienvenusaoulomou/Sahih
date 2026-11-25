@@ -14,6 +14,7 @@ Generative AI makes fake official messages trivial to produce: fake fine SMS, fa
    - ⚠️ **Modified**: close to a signed message, changed words highlighted
    - ❌ **Fake / impersonation**: unknown SAH code, or link, number, sender or account never declared by the institution
    - 🔗 **Official channel**: the link belongs to a declared channel
+   - 🖼️ **Posters**: authentic, retouched (changed zones boxed in red) or not signed
 4. **AI explains, Hedera decides.** Gemini turns the verdict into a plain-language explanation; it never decides authenticity.
 5. **Reports.** Citizen reports are timestamped on Hedera and alert the impersonated institution.
 
@@ -37,6 +38,7 @@ Live testnet IDs:
 - Public verification page with live stats and examples
 - Institution sign-up, reviewed and approved by the authority
 - Secure login: scrypt password hashes, HMAC-signed HttpOnly sessions, rate limiting, institution keys encrypted with AES-256-GCM
+- **Signed posters and images**: an institution signs a poster (SHA-256 of the exact file + perceptual hash on Hedera) and gets a version with a QR band. Citizens drop any copy of it: recompressed copies (WhatsApp, Facebook) are recognised, retouched zones (a changed date or phone number) are boxed in red next to the official poster
 - Institution dashboard: publish and sign, share buttons (WhatsApp, Facebook, X, LinkedIn, Telegram), QR codes, publications, reports, official channels, security
 - Authority console: applications, institutions, reports, billing, accreditation and revocation
 - Subscriptions: free for citizens; **Pro** and **Premium** plans for institutions, monthly renewals, PDF invoices with QR code, invoice and payment hashes anchored on Hedera, public invoice verification page

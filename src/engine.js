@@ -52,7 +52,7 @@ async function analyze({ text, sender }, opts = {}) {
   text = String(text || "").slice(0, 4000);
   sender = String(sender || "").trim();
   const insts = store.institutions();
-  const pubs = store.publications();
+  const pubs = store.publications().filter((p) => !p.media); // posters are checked by image, not by text
   const codeFound = (text.match(CODE_RE) || [null])[0];
   const codePub = codeFound ? pubs.find((p) => p.code === codeFound.toUpperCase()) : null;
   if (codeFound) {
@@ -286,6 +286,39 @@ async function finish(withAI, r) {
   return r;
 }
 
+// Posters: find the signed images that look like the one received (perceptual hash)
+function matchImage({ variants, sha256 }) {
+  const inst = (id) => store.institutions().find((i) => i.id === id);
+  const valid = (p) => { const i = inst(p.instId); return i && i.status === "ACCREDITED" && h.verifySig(i.publicKey, p.hash, p.sig); };
+  const pubs = store.publications().filter((p) => p.media);
+  const exact = sha256 && pubs.find((p) => p.hash === sha256);
+  const ham = (a, b) => { let n = 0; for (let i = 0; i < 16; i++) { let v = parseInt(a[i], 16) ^ parseInt(b[i], 16); while (v) { n += v & 1; v >>= 1; } } return n; };
+  const cands = [];
+  for (const p of pubs) for (const v of (variants || []).slice(0, 4)) {
+    if (!/^[0-9a-f]{16}$/.test(String(v.dhash))) continue;
+    const d = ham(p.media.dhash, v.dhash);
+    if (d <= 12) cands.push({ p, crop: Number(v.crop) || 0, distance: d });
+  }
+  cands.sort((a, b) => a.distance - b.distance);
+  const seen = new Set();
+  const out = (exact ? [{ p: exact, crop: 0, distance: 0, exact: true }] : []).concat(cands)
+    .filter((c) => { const k = c.p.code + ":" + c.crop; return !seen.has(k) && seen.add(k); }).slice(0, 4)
+    .map((c) => ({ ...c, valid: valid(c.p), institution: publicInst(inst(c.p.instId)) }))
+    .map(({ p, crop, distance, exact: ex, valid: ok, institution }) => ({
+      code: p.code, title: p.title, text: p.text, at: p.consensusAt || p.at, media: p.media, topicId: p.topicId, sequence: p.sequence,
+      crop, distance, exact: !!ex, signatureValid: ok, institution, links: { topic: `${h.HASHSCAN}/topic/${p.topicId}` },
+    }));
+  return { candidates: out };
+}
+// Final verdict of an image check (computed in the browser against the official image), counted in the stats
+function countImageVerdict({ code, verdict }) {
+  const ok = ["AUTHENTIC", "MODIFIED", "UNKNOWN"];
+  if (!ok.includes(verdict)) return { ok: false };
+  const p = code && store.publications().find((x) => x.code === String(code));
+  countVerification({ verdict, institution: p ? { id: p.instId } : null });
+  return { ok: true };
+}
+
 function byCode(code) {
   const c = String(code || "").trim().toUpperCase();
   const p = store.publications().find((x) => x.code === c);
@@ -307,4 +340,4 @@ async function explain(id) {
   return { ai, aiDigest };
 }
 
-module.exports = { analyze, explain, byCode, VERDICT_FR };
+module.exports = { analyze, explain, byCode, matchImage, countImageVerdict, VERDICT_FR };

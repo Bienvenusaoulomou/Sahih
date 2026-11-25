@@ -11,6 +11,7 @@ const billing = require("./billing");
 
 const app = express();
 app.disable("x-powered-by");
+app.use("/api/institutions/:id/publish-image", express.json({ limit: "10mb" }));
 app.use(express.json({ limit: "200kb" }));
 app.use((req, res, next) => { // basic security headers
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -19,6 +20,7 @@ app.use((req, res, next) => { // basic security headers
   next();
 });
 app.use(express.static(path.join(__dirname, "..", "public")));
+app.use("/media", express.static(reg.MEDIA_DIR, { fallthrough: false, maxAge: "1h" })); // official signed posters
 const PORT = process.env.PORT || 3000;
 const COOKIE = "sahih_session";
 const baseUrl = (req) => process.env.PUBLIC_URL || `${req.protocol}://${req.get("host")}`;
@@ -139,6 +141,18 @@ app.post("/api/institutions/:id/publish", wrap(async (req) => {
   const url = `${baseUrl(req)}/?code=${pub.code}`;
   return { publication: pub, url, qr: await QRCode.toDataURL(url, { margin: 1, width: 300 }) };
 }));
+app.post("/api/institutions/:id/publish-image", wrap(async (req) => {
+  needInstitution(req, req.params.id);
+  billing.assertCanPublish(req.params.id);
+  const pub = await reg.publishImage(req.params.id, req.body || {});
+  const url = `${baseUrl(req)}/?code=${pub.code}`;
+  return { publication: pub, url, qr: await QRCode.toDataURL(url, { margin: 1, width: 400 }) };
+}));
+app.post("/api/verify-image", wrap(async (req) => {
+  if (secure.rateLimited("img:" + req.ip, 30, 60000)) throw fail("Trop de vérifications, réessayez dans une minute.", 429);
+  return engine.matchImage(req.body || {});
+}));
+app.post("/api/verify-image/verdict", wrap(async (req) => engine.countImageVerdict(req.body || {})));
 app.post("/api/institutions/:id/channels", wrap(async (req) => {
   needInstitution(req, req.params.id);
   return publicInst((await reg.updateChannels(req.params.id, req.body || {})).inst);

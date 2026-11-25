@@ -301,3 +301,21 @@ td{padding:13px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
 .pcard li{padding:5px 0 5px 22px;position:relative}
 .pcard li:before{content:"✓";position:absolute;left:0;color:#0b7a4f;font-weight:700}
 .docwrap > .doc:first-child{min-height:212px}
+
+/* posters / images */
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;min-height:150px;border:1.5px dashed rgba(167,139,250,.45);border-radius:16px;background:rgba(0,0,0,.18);text-align:center;padding:16px;cursor:pointer;transition:border-color .2s,background .2s}
+.drop:hover,.drop.over{border-color:#a78bfa;background:rgba(124,58,237,.12)}
+.drop img{max-width:100%;max-height:320px;border-radius:10px}
+.drop.img-check{flex-direction:row;justify-content:flex-start;text-align:left;min-height:0;margin-top:16px;padding:14px 18px;font-size:14.5px;color:var(--muted)}
+.drop.img-check b{color:var(--text)}
+.drop.img-check .ico{font-size:24px}
+.drop.busy{opacity:.6;pointer-events:none}
+.imgpair{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+@media(max-width:800px){.imgpair{grid-template-columns:1fr}}
+.imgfig{position:relative;margin:0;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:18px;padding:16px}
+.imgfig figcaption{font-size:13px;color:var(--muted);margin-bottom:10px;padding-right:120px}
+.imgfig .stamp{width:124px;height:124px;top:-20px;right:-14px;padding:8px;border-width:5px}
+.imgfig .stamp .ar{font-size:22px}.imgfig .stamp .fr{font-size:13px}.imgfig .stamp .when{display:none}
+.imgbox{position:relative;line-height:0}
+.imgbox img{width:100%;border-radius:10px;display:block}
+.imgbox .zone{position:absolute;border:2.5px solid #ff5a67;border-radius:6px;background:rgba(255,90,103,.16);box-shadow:0 0 0 3px rgba(255,90,103,.25)}

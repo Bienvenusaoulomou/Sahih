@@ -47,6 +47,8 @@
       <button class="chip" data-ex="4">Fausse page Facebook</button>
       <button class="chip" data-ex="5">Vrai compte Instagram</button>
     </div>
+    <label class="drop img-check" for="vimg" id="vdrop"><input type="file" id="vimg" accept="image/*" hidden>
+      <span class="ico" aria-hidden="true">🖼️</span><span><b>Vous avez reçu une affiche ou une photo ?</b> Déposez l'image ici, ou cliquez pour la choisir. Sahih la compare aux affiches signées et montre ce qui a été retouché.</span></label>
     <div id="err"></div>
   </div>
   <div id="out"></div>
@@ -99,6 +101,7 @@
 </footer>
 
 <script src="/common.js"></script>
+<script src="/imgsig.js"></script>
 <script src="/particles.js"></script>
 <script>
 const EX = [
@@ -195,6 +198,83 @@ async function verify() {
   catch (e) { $("#err").innerHTML = `<div class="alert err">La vérification a échoué : ${esc(e.message)}</div>`; }
   finally { $("#go").disabled = false; $("#go").textContent = "Vérifier"; }
 }
+// ---------------------------------------------------------------- posters and images
+const SUB_IMG = {
+  AUTHENTIC: "Cette affiche est identique à celle que l'institution a signée sur Hedera (même après recompression par WhatsApp ou Facebook).",
+  MODIFIED: "Cette image reprend une vraie affiche officielle, mais elle a été retouchée. Les zones encadrées en rouge ne viennent pas de l'institution.",
+  FAKE: "Cette image ressemble à une affiche officielle, mais sa signature n'est pas valide.",
+  UNKNOWN: "Aucune institution vérifiée n'a signé cette image. Les affiches officielles portent un bandeau Sahih avec un QR code : sans lui, méfiance.",
+};
+const boxesHtml = (boxes, frac) => boxes.map((b) => `<i class="zone" style="left:${(b.x * 100).toFixed(2)}%;top:${(b.y * frac * 100).toFixed(2)}%;width:${(b.w * 100).toFixed(2)}%;height:${(b.h * frac * 100).toFixed(2)}%"></i>`).join("");
+async function sha256Hex(file) {
+  try { const d = await crypto.subtle.digest("SHA-256", await file.arrayBuffer()); return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join(""); }
+  catch { return null; }
+}
+async function verifyImage(file) {
+  if (!file) return;
+  if (!/^image\//.test(file.type)) { $("#err").innerHTML = `<div class="alert err">Ce fichier n'est pas une image.</div>`; return; }
+  $("#err").innerHTML = ""; $("#vdrop").classList.add("busy");
+  try {
+    const img = await SahihImage.loadImage(file);
+    const variants = SahihImage.variants(img);
+    const m = await api("/api/verify-image", { method: "POST", body: { variants, sha256: await sha256Hex(file) } });
+    const src = URL.createObjectURL(file);
+    let verdict = "UNKNOWN", c = null, cmp = null, official = null;
+    for (const cand of m.candidates) { // closest signed posters, with and without the Sahih band
+      const off = await SahihImage.loadImage(cand.media.url);
+      const x = SahihImage.compare(off, img, cand.crop);
+      if (!cand.exact && (!x.sameImage || x.aspectGap > 0.06)) continue; // only looks alike: a different image
+      c = cand; official = off; cmp = x;
+      verdict = !c.signatureValid ? "FAKE" : c.exact || cmp.changedCells === 0 ? "AUTHENTIC" : "MODIFIED";
+      break;
+    }
+    LAST = null;
+    const frac = c ? (img.naturalHeight - c.crop) / img.naturalHeight : 1;
+    const zones = verdict === "MODIFIED" && cmp ? cmp.boxes : [];
+    $("#out").innerHTML = `<div class="result">
+      <div class="${c ? "imgpair" : ""}">
+        <figure class="imgfig"><figcaption>Image reçue${zones.length ? ` · <b style="color:var(--red)">${zones.length} zone(s) retouchée(s)</b>` : ""}</figcaption>
+          <div class="imgbox"><img src="${src}" alt="Image reçue">${boxesHtml(zones, frac)}</div>${stamp(verdict)}</figure>
+        ${c ? `<figure class="imgfig"><figcaption>Affiche officielle signée par <b>${esc(c.institution.name)}</b> le ${fmtDate(c.at)}</figcaption>
+          <div class="imgbox"><img src="${esc(c.media.url)}" alt="Affiche officielle">${boxesHtml(zones, 1)}</div></figure>` : ""}
+      </div>
+      <p class="verdict-line ${verdict}">${verdict === "AUTHENTIC" ? "Affiche officielle authentique" : verdict === "MODIFIED" ? "Affiche officielle retouchée" : verdict === "FAKE" ? "Signature invalide" : "Affiche non signée"}<span>${esc(SUB_IMG[verdict])}</span></p>
+      <div class="grid g2" style="margin-top:18px">
+        <div class="card"><h3>Ce que dit Hedera</h3>
+          ${c ? [
+            [true, "Affiche retrouvée dans le registre", `${c.title || "Affiche"} · code ${c.code}`],
+            [c.signatureValid, "Signature de l'institution", c.signatureValid ? `Signée avec la clé de ${c.institution.name}, accréditée sur Hedera` : "La signature ne correspond pas à la clé de l'institution"],
+            [verdict === "AUTHENTIC", "Contenu de l'image", verdict === "AUTHENTIC" ? (c.exact ? "Fichier identique à l'original, octet par octet" : "Identique à l'original, aux pertes de compression près") : `${zones.length} zone(s) différente(s) de l'original`],
+          ].map(([ok, l, d]) => `<div class="check"><div class="s ${ok ? "y" : "n"}" aria-hidden="true">${ok ? "✓" : "✕"}</div><div><b>${esc(l)}</b><span>${esc(d)}</span></div></div>`).join("")
+          + `<div class="row small" style="margin-top:12px;gap:18px"><a target="_blank" rel="noopener" href="${c.links.topic}">Voir la preuve sur HashScan (message n° ${c.sequence})</a></div>`
+          : `<div class="check"><div class="s n" aria-hidden="true">✕</div><div><b>Aucune affiche signée ne correspond</b><span>Ni le fichier, ni une version recompressée ou redimensionnée d'une affiche officielle.</span></div></div>
+             <p class="small muted" style="margin-top:10px">L'affiche porte un code <span class="code">SAH-…</span> ? Saisissez-le dans « Vérifier un code ». Un faussaire peut inventer un code : Sahih vous dira s'il existe.</p>`}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <div class="ai"><div class="src">Conseil</div><p>${verdict === "AUTHENTIC" ? "Vous pouvez faire confiance à cette affiche et la partager." : verdict === "MODIFIED" ? "Ne vous fiez pas aux informations des zones encadrées (dates, montants, liens, numéros) : comparez avec l'affiche officielle à droite." : "Ne cliquez sur aucun lien, n'appelez aucun numéro et ne payez rien à partir de cette image. Vérifiez sur les canaux officiels de l'institution."}</p></div>
+          ${verdict !== "AUTHENTIC" ? `<div class="card"><h3>Prévenir l'institution</h3><p class="small">Votre signalement est anonyme. Il est horodaté sur Hedera${c ? " et apparaît dans l'espace de l'institution concernée" : ""}.</p>
+            <button class="btn alert" id="report" style="margin-top:12px">Signaler cette image</button><div id="repOut" class="small" style="margin-top:8px"></div></div>` : ""}
+        </div>
+      </div></div>`;
+    const b = $("#report");
+    if (b) b.onclick = async () => {
+      b.disabled = true; b.textContent = "Envoi sur Hedera…";
+      try {
+        const rep = await api("/api/report", { method: "POST", body: { text: `[Image] ${verdict === "MODIFIED" ? "Affiche retouchée" : "Image non signée"}${c ? ` · copie de ${c.code} « ${c.title || "affiche"} »` : ""}`, verdict, claimedId: c && c.institution.id } });
+        $("#repOut").innerHTML = `<div class="alert ok" style="margin:0">Signalé. Enregistré sur Hedera (signalement n° ${rep.sequence}).</div>`; b.remove(); loadFeed();
+      } catch (e) { $("#repOut").innerHTML = `<div class="alert err" style="margin:0">${esc(e.message)}</div>`; b.disabled = false; b.textContent = "Signaler cette image"; }
+    };
+    api("/api/verify-image/verdict", { method: "POST", body: { code: c && c.code, verdict } }).then(loadStats).catch(() => {});
+    $("#out").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) { $("#err").innerHTML = `<div class="alert err">La vérification de l'image a échoué : ${esc(e.message)}</div>`; }
+  finally { $("#vdrop").classList.remove("busy"); $("#vimg").value = ""; }
+}
+$("#vimg").onchange = (e) => verifyImage(e.target.files[0]);
+$("#vdrop").ondragover = (e) => { e.preventDefault(); $("#vdrop").classList.add("over"); };
+$("#vdrop").ondragleave = () => $("#vdrop").classList.remove("over");
+$("#vdrop").ondrop = (e) => { e.preventDefault(); $("#vdrop").classList.remove("over"); verifyImage(e.dataTransfer.files[0]); };
+document.addEventListener("paste", (e) => { const f = [...(e.clipboardData && e.clipboardData.files || [])].find((x) => /^image\//.test(x.type)); if (f) { e.preventDefault(); verifyImage(f); } });
+
 async function verifyCode(code) {
   code = String(code || "").trim();
   if (!code) return;
@@ -206,8 +286,9 @@ async function verifyCode(code) {
     const p = r.publication;
     $("#out").innerHTML = `<div class="result"><div class="docwrap"><div class="doc">
       <div class="meta">${esc(p.title || p.kind)} · publié par <b>${esc(r.institution.name)}</b> le ${fmtDate(p.consensusAt || p.at)} · <span class="code">${esc(p.code)}</span></div>
-      <div class="body">${p.text ? esc(p.text) : "<i>Message individuel : seule son empreinte est publiée sur Hedera.</i>"}</div></div>${stamp(r.verdict === "AUTHENTIC" ? "AUTHENTIC" : "FAKE")}</div>
-      <p class="verdict-line ${r.verdict === "AUTHENTIC" ? "AUTHENTIC" : "FAKE"}">${r.verdict === "AUTHENTIC" ? "Message officiel authentique" : "Code invalide"}<span>Message n° ${p.sequence} du canal ${esc(p.topicId)} · <a target="_blank" rel="noopener" href="${r.links.topic}">voir la preuve sur HashScan</a></span></p></div>`;
+      ${p.media ? `<div class="imgbox" style="max-width:520px;margin:6px 0 10px"><img src="${esc(p.media.url)}" alt="Affiche officielle"></div>` : ""}
+      <div class="body">${p.text ? esc(p.text) : p.media ? "" : "<i>Message individuel : seule son empreinte est publiée sur Hedera.</i>"}</div></div>${stamp(r.verdict === "AUTHENTIC" ? "AUTHENTIC" : "FAKE")}</div>
+      <p class="verdict-line ${r.verdict === "AUTHENTIC" ? "AUTHENTIC" : "FAKE"}">${r.verdict === "AUTHENTIC" ? (p.media ? "Affiche officielle authentique" : "Message officiel authentique") : "Code invalide"}<span>Message n° ${p.sequence} du canal ${esc(p.topicId)} · <a target="_blank" rel="noopener" href="${r.links.topic}">voir la preuve sur HashScan</a></span></p></div>`;
   }
   $("#out").scrollIntoView({ behavior: "smooth", block: "start" });
 }

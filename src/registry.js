@@ -166,6 +166,43 @@ async function publish(id, { kind, title, text, isPrivate }) {
   return pub;
 }
 
+// Posters / images: the exact JPEG bytes are hashed and signed; a perceptual hash (dhash)
+// lets citizens recognise the poster even after WhatsApp or Facebook recompress it.
+const fs = require("fs");
+const path = require("path");
+const MEDIA_DIR = path.join(__dirname, "..", "data", "media");
+async function publishImage(id, { title, text, image, dhash, w, h: height }) {
+  const all = store.institutions();
+  const inst = all.find((i) => i.id === id);
+  if (!inst || inst.status !== "ACCREDITED") throw new Error("Institution not accredited");
+  const m = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/.exec(String(image || ""));
+  if (!m) throw new Error("Image manquante ou format non pris en charge (JPEG attendu).");
+  if (!/^[0-9a-f]{16}$/.test(String(dhash || ""))) throw new Error("Empreinte de l'image manquante.");
+  const bytes = Buffer.from(m[1], "base64");
+  if (bytes.length > 6 * 1024 * 1024) throw new Error("Image trop lourde (6 Mo maximum).");
+  const key = instKey(id);
+  const hash = h.sha256(bytes);
+  const sig = h.sign(key, hash);
+  const code = "SAH-" + hash.slice(0, 6).toUpperCase();
+  const at = new Date().toISOString();
+  const img = { sha256: hash, dhash, w: Number(w) || 0, h: Number(height) || 0 };
+  const caption = String(text || "").trim();
+  const base = { v: 1, type: "PUBLISH", kind: "affiche", title: String(title || "").slice(0, 120), hash, sig, code, at, img };
+  let payload = caption ? { ...base, text: caption } : base;
+  if (Buffer.byteLength(JSON.stringify(payload)) > MAX_MSG) payload = base;
+  const rec = await submit(inst.topicId, payload, key);
+  fs.mkdirSync(MEDIA_DIR, { recursive: true });
+  fs.writeFileSync(path.join(MEDIA_DIR, code + ".jpg"), bytes);
+  const pub = {
+    id: `${inst.topicId}-${rec.sequence}`, instId: id, kind: "affiche", title: base.title,
+    text: caption || null, textOnChain: !!payload.text, private: false,
+    media: { ...img, url: `/media/${code}.jpg` },
+    hash, sig, code, at, topicId: inst.topicId, sequence: rec.sequence, tx: rec.tx,
+  };
+  save.publications([pub, ...store.publications().filter((p) => p.hash !== hash)]);
+  return pub;
+}
+
 async function updateChannels(id, { domains, senders, phones, social }) {
   const all = store.institutions();
   const inst = all.find((i) => i.id === id);
@@ -231,7 +268,8 @@ async function syncFromHedera() {
         const prev = byHash[p.hash] || {};
         byHash[p.hash] = {
           ...prev, id: `${inst.topicId}-${m.sequence}`, instId: inst.id, kind: p.kind, title: p.title,
-          text: p.text || prev.text || null, textOnChain: !!p.text, private: !p.text && !prev.text,
+          text: p.text || prev.text || null, textOnChain: !!p.text, private: !p.img && !p.text && !prev.text,
+          media: p.img ? { ...p.img, url: `/media/${p.code}.jpg` } : prev.media,
           hash: p.hash, sig: p.sig, code: p.code, at: prev.at || p.at, consensusAt: h.tsToIso(m.ts),
           topicId: inst.topicId, sequence: m.sequence,
         };
@@ -252,4 +290,4 @@ function encryptLegacyKeys() {
   return changed;
 }
 
-module.exports = { cleanSocial, SOCIAL_HOSTS, SOCIAL_ALIASES, encryptLegacyKeys, store, save, accredit, revokeAccreditation, publish, updateChannels, report, syncFromHedera, requireConfig };
+module.exports = { cleanSocial, SOCIAL_HOSTS, SOCIAL_ALIASES, encryptLegacyKeys, store, save, accredit, revokeAccreditation, publish, publishImage, MEDIA_DIR, updateChannels, report, syncFromHedera, requireConfig };
