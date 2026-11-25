@@ -56,6 +56,9 @@ function apply(body) {
   const weak = secure.checkPasswordStrength(body.password);
   if (weak) throw fail(weak);
   if (reg.store.users().some((u) => u.email === email)) throw fail("Un compte existe déjà avec cette adresse.");
+  const key = (x) => String(x).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  if (reg.store.institutions().some((i) => i.status === "ACCREDITED" && key(i.name) === key(name)))
+    throw fail(`« ${name} » est déjà accréditée sur Sahih. Si vous représentez cette institution, contactez l'autorité de confiance.`, 409);
   const apps = reg.store.applications();
   if (apps.some((a) => a.email === email && a.status === "PENDING")) throw fail("Une demande est déjà en attente pour cette adresse.");
   const app = {

@@ -3,6 +3,10 @@
 > **Vérifiez en 3 secondes qu'un SMS, un communiqué ou une page vient vraiment d'une institution.**
 > Hedera Cross Campus Challenge 2026 — ESPRIT Campus Edition · Team **Sahih Labs**
 
+## Demo
+- 🎬 Demo video (French voice-over): [video/sahih_demo_voix.mp4](video/sahih_demo_voix.mp4) · [YouTube](https://youtu.be/t3_l_tq5VvQ)
+- 📊 Pitch deck: [Google Slides](https://docs.google.com/presentation/d/1zhZnILrnSefpFUnprZVHznRUTwx1tXNX/edit)
+
 ## The problem
 Generative AI makes fake official messages trivial to produce: fake fine SMS, fake ministry press releases, fake bank pages. Citizens have no way to check, and institutions can only say "check our official page".
 

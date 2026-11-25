@@ -76,7 +76,7 @@ async function accredit({ name, aliases, domains, senders, phones, social, kind 
   const op = h.getOperator();
   const id = slug(name);
   const all = store.institutions();
-  if (all.find((i) => i.id === id && i.status === "ACCREDITED")) throw new Error("Institution already accredited");
+  if (all.find((i) => i.id === id && i.status === "ACCREDITED")) throw Object.assign(new Error(`« ${name} » est déjà accréditée. Refusez cette demande ou demandez un autre nom.`), { status: 409 });
 
   // 1) its own key + Hedera account (its on-chain identity)
   const key = h.PrivateKey.generateECDSA();
